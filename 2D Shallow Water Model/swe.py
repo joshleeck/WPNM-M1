@@ -13,11 +13,13 @@ Updated: 04/07/2019 - Adapted original source code to be compatible with code st
                         . Coriolis terms (f-plane or beta-plane or none)
                         . Wind stress term
                         . Friction term
-                        . First and third order semi-lagrangian method
+                        . Linear and cubic interpolation for semi-lagrangian method
         15/08/2019 - Tidying up code
+        21/08/2019 - Reduced SL to first order, shorter run time (optional second order SL in separate setup)
 
 Extended based on a practical by Prof Pier Luigi Vidale
 
+For eulerian approach:
 Script that solves that solves the 2D shallow water equations using finite
 differences where the momentum and continuity equations are taken to be linear.
 The model supports switching on/off various terms, but in its most complete form,
@@ -29,7 +31,23 @@ the model solves the following set of equations:
 
 where f = f_0 + beta*y can be the full latitude varying coriolis parameter.
 For the momentum equations, a forward-backward time scheme (Matsuno, 1966)
-is used. The model is stable under the CFL condition of
+is used.
+
+For semi-lagrangian approach:
+Script that solves that solves the 2D shallow water equations where the momentum
+and continuity equations are taken to be fully non-linear.
+The model supports switching on/off various terms, but in its most complete form,
+the model solves the following set of equations:
+
+    du/dt - fv = -g*d(eta)/dx + tau_x/(rho_0*(H+eta))- kappa*u
+    dv/dt + fu = -g*d(eta)/dy + tau_y/(rho_0*(H+eta))- kappa*v
+    d(eta)/dt + (H+eta)*(du/dx + dv/dy) = sigma - w
+
+where f = f_0 + beta*y can be the full latitude varying coriolis parameter.
+For the momentum equations, a forward-backward time scheme (Matsuno, 1966)
+is used.
+
+For both cases, the model is stable under the CFL condition of
 
     dt <= min(dx, dy)/sqrt(g*H)
 
@@ -56,7 +74,7 @@ param_string += "\ng = {:g}\nH = {:g}".format(g, H)
 param_string += "\ndx = {:.2f} m\ndy = {:.2f} m\ndt = {:.2f} s".format(dx, dy, dt)
 
 # Allocate arrays
-eta, u, v, eta_np1, u_np1, v_np1, u_nm1, v_nm1 = allocate_arrays()
+eta, u, v, eta_np1, u_np1, v_np1 = allocate_arrays()
 # Sampling variables.
 eta_list = []; u_list = []; v_list = []                     # Lists to contain eta and u,v for animation
 
@@ -64,7 +82,7 @@ eta_list = []; u_list = []; v_list = []                     # Lists to contain e
 eta = ic_eta(eta)
 
 # Allocate optional arrays
-kappa, tau_x, tau_y, plane, sigma, w = allocate_optional_arrays(eta, param_string)
+kappa, tau_x, tau_y, plane, sigma, w, param_string = allocate_optional_arrays(u, eta, param_string)
 
 # Print parameters to screen
 print(param_string)
@@ -87,14 +105,14 @@ if method == 'eulerian':
 
 elif method == 'linear SL':
     func = linear_depart
-    sch.SL(time_step, max_time_step, u_nm1, v_nm1, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
+    sch.SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
                  kappa, tau_x, tau_y, plane, sigma, w, dt, dx, dy,
                  use_friction, use_wind, use_coriolis, use_source, use_sink,
                  anim_interval, u_list, v_list, eta_list, func)
 
 elif method == 'cubic SL':
     func = cubic_depart
-    sch.SL(time_step, max_time_step, u_nm1, v_nm1, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
+    sch.SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
                  kappa, tau_x, tau_y, plane, sigma, w, dt, dx, dy,
                  use_friction, use_wind, use_coriolis, use_source, use_sink,
                  anim_interval, u_list, v_list, eta_list, func)

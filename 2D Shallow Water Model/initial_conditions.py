@@ -28,11 +28,8 @@ def allocate_arrays():
     eta_np1 = xr.DataArray(np.zeros([N_y, N_x]), dims=('y', 'x'), coords={'y': eta_coords['y'], 'x': eta_coords['x']})
     u_np1 = xr.DataArray(np.zeros([N_y, N_x+1]), dims=('y', 'x'), coords={'y': u_coords['y'], 'x': u_coords['x']})
     v_np1 = xr.DataArray(np.zeros([N_y+1, N_x]), dims=('y', 'x'), coords={'y': v_coords['y'], 'x': v_coords['x']})
-    # Need to initialise an extra wind dataarrays for previous time step for SL scheme
-    u_nm1 = xr.DataArray(np.zeros([N_y, N_x+1]), dims=('y', 'x'), coords={'y': u_coords['y'], 'x': u_coords['x']})
-    v_nm1 = xr.DataArray(np.zeros([N_y+1, N_x]), dims=('y', 'x'), coords={'y': v_coords['y'], 'x': v_coords['x']})
 
-    return eta, u, v, eta_np1, u_np1, v_np1, u_nm1, v_nm1
+    return eta, u, v, eta_np1, u_np1, v_np1
 
 def ic_eta(eta):
     # Initial condition for eta.
@@ -40,7 +37,7 @@ def ic_eta(eta):
     eta[:,:] = 0.1*np.exp(-((eta.x-L_x/2)**2/(2*(0.05e+6)**2) + (eta.y-L_y/2)**2/(2*(0.05e+6)**2))) #initial height perturbation
     return eta
 
-def allocate_optional_arrays(eta, param_string):
+def allocate_optional_arrays(u, eta, param_string):
     # Define friction array if friction is enabled.
     if (use_friction is True):
         kappa = kappa_0
@@ -88,4 +85,4 @@ def allocate_optional_arrays(eta, param_string):
     else:
         w = np.zeros((N_y, N_x))*eta
 
-    return kappa, tau_x, tau_y, plane, sigma, w
+    return kappa, tau_x, tau_y, plane, sigma, w, param_string

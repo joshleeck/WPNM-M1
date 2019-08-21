@@ -95,28 +95,3 @@ def cubic_depart(array, u, v, dt):
 
     return array
 
-def extrapolate_wind(wind_n, wind_nm1):
-    """
-    This is required to get the wind at time n+1/2 to find midpoint of back trajectory, as advised by Dale Durran.
-    """
-    wind_ext = 3/2*wind_n - 1/2*wind_nm1
-    return wind_ext
-
-def find_value_at_midpt(array, u, v, dt):
-    # Finding the midpoint of the back trajectory (we only consider half time-step)
-    x_mid = array.x - 0.5*dt*u.interp(x=array.x, y=array.y)
-    y_mid = array.y - 0.5*dt*v.interp(x=array.x, y=array.y)
-
-    # Boundary conditions: truncating the departure points at the border of the domain
-    # Set the departure point to be the on the boundary if it is outside the domain
-    x_mid = x_mid.where(x_mid >= array.x.min(), array.x.min())
-    x_mid = x_mid.where(x_mid <= array.x.max(), array.x.max())
-    y_mid = y_mid.where(y_mid >= array.y.min(), array.y.min())
-    y_mid = y_mid.where(y_mid <= array.y.max(), array.y.max())
-
-    # Performing a cubic interpolation using 4 closest points to departure point
-    # interpolate.interp2d returns a function which can be called on departure points
-    interp = interpolate.interp2d(array.x.values, array.y.values, array.values, kind='cubic')
-    array.values = interp(x_mid.x.values, y_mid.y.values)
-
-    return array

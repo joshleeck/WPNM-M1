@@ -51,8 +51,8 @@ def velocity_animation(X, Y, u_list, v_list, frame_interval):
     plt.title("Velocity field $\mathbf{u}(x,y)$ after 0.0 days", fontname = "serif", fontsize = 19)
     plt.xlabel("x [km]", fontname = "serif", fontsize = 16)
     plt.ylabel("y [km]", fontname = "serif", fontsize = 16)
-    q_int = 4
-    Q = ax.quiver(Y[::q_int, ::q_int]/1000.0, X[::q_int, ::q_int]/1000.0, u_list[0][::q_int,::q_int], v_list[0][::q_int,::q_int],
+    q_int = 1
+    Q = ax.quiver(X[::q_int, ::q_int]/1000.0, Y[::q_int, ::q_int]/1000.0, np.transpose(u_list[0])[::q_int,::q_int], np.transpose(v_list[0])[::q_int,::q_int],
         scale=0.02, scale_units='inches')
     #qk = plt.quiverkey(Q, 0.9, 0.9, 0.001, "0.1 m/s", labelpos = "E", coordinates = "figure")
 
@@ -62,7 +62,7 @@ def velocity_animation(X, Y, u_list, v_list, frame_interval):
         v = v_list[num]
         ax.set_title("Velocity field $\mathbf{{u}}(x,y,t)$ after t = {:.2f} hours".format(
             num*frame_interval/3600), fontname = "serif", fontsize = 19)
-        Q.set_UVC(u[::q_int, ::q_int], v[::q_int, ::q_int])
+        Q.set_UVC(np.transpose(u)[::q_int, ::q_int], np.transpose(v)[::q_int, ::q_int])
         return Q,
 
     anim = animation.FuncAnimation(fig, update_quiver,

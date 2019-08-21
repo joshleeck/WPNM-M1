@@ -17,7 +17,7 @@ import numpy as np
 L_x = 1e+6              # Length of domain in x-direction [m]
 L_y = 1e+6              # Length of domain in y-direction [m]
 g = 9.81                # Acceleration of gravity [m/s^2]
-H = 100                # Depth of fluid [m]
+H = 1000                # Depth of fluid [m]
 f_0 = 1e-4              # Fixed part of coriolis parameter [1/s]
 beta = 1e-11            # gradient of coriolis parameter [1/ms]
 rho_0 = 1024.0          # Density of fluid [kg/m^3)]
@@ -31,13 +31,13 @@ use_source = False      # True if you want mass source into the domain
 use_sink = False        # True if you want mass sink out of the domain
 
 # --------------- Computational parameters ---------------
-N_x = 200                            # Number of grid points in x-direction
-N_y = 200                            # Number of grid points in y-direction
+N_x = 50                            # Number of grid points in x-direction
+N_y = 50                            # Number of grid points in y-direction
 dx = L_x/N_x                        # Grid spacing in x-direction
 dy = L_y/N_y                        # Grid spacing in y-direction
-dt = 0.1*min(dx, dy)/np.sqrt(g*H)   # Time step (defined from the CFL condition)
+dt = 1.01*min(dx, dy)/np.sqrt(2*g*H)   # Time step (defined from the CFL condition)
 time_step = 1                       # For counting time loop steps
-max_time_step = 1000                # Total number of time steps in simulation
-method = 'linear SL'              # Available options are "eulerian", "linear SL", and "cubic SL"
+max_time_step = 100                # Total number of time steps in simulation
+method = 'eulerian'              # Available options are "eulerian", "linear SL", and "cubic SL"
 
-anim_interval = 50                  # How often to sample for animation
+anim_interval = 5                  # How often to sample for animation
