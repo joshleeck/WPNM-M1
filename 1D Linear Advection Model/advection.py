@@ -5,6 +5,7 @@ Updated: 07/04/2019 - Coded skeleton
          03/05/2019 - Added exception catching and error handling
          06/08/2019 - Added new schemes
          15/08/2019 - Moved plotting routines into plotting.py
+         04/09/2019 - Added higher order interpolation for SL schemes and monotone limiter
 
 Extended based on a practical by Dr Hilary Weller
 """
@@ -20,7 +21,7 @@ import matplotlib.pyplot as plt
 x_min = 0   #float or integer (starting value of x)
 x_max = 1   #float or integer (ending value of x)
 nx = 100    #integer (number of gridpoints)
-nt = 100    #integer (number of timesteps)
+nt = 100   #integer (number of timesteps)
 u = 0.2     #float or integer (wind speed)
 T = 1       #float or integer (end time)
 K = 0.5e-3    #float or integer (diffusivity constant)
@@ -45,7 +46,10 @@ CTCS_AD: Centred in time, Centred in space with Artificial Diffusion
 LW:      Lax-Wendroff
 WB:      Warming and Beam 
 TVD:     Total Variation Diminishing
-SL:      Semi-Lagrangian
+SL1:     Semi-Lagrangian with Linear Interpolation
+SL2:     Semi-Lagrangian with Quadratic Interpolation
+SL3:     Semi-Lagrangian with Cubic Interpolation
+SL3QM:   Semi-Lagrangian with Cubic Interpolation with Quasi-Monotone
 """
 # Pick scheme here
 scheme = 'FTCS'
@@ -87,6 +91,8 @@ elif init_cond == 'B':
     phi = ic.initial_conditions_2(x)
 else:
     raise Exception("Options for initial condition are: 'A' or 'B'")
+# Print initial total mass
+ea.compute_mass(phi, 'Initial')
 
 #=========================================================================
 # Analytic solution with periodic boundaries
@@ -129,9 +135,15 @@ elif scheme == 'WB':
 elif scheme == 'TVD':
     phiNumerical = sch.TVD(phi, c, nt)
 
-# Extra schemes (linear semi-langrangian)
-elif scheme == 'SL':
-    phiNumerical = sch.SL(phi, u, dt, dx, nt)
+# Extra schemes (semi-langrangian)
+elif scheme == 'SL1':
+    phiNumerical = sch.SL1(phi, u, dt, dx, nt)
+elif scheme == 'SL2':
+    phiNumerical = sch.SL2(phi, u, dt, dx, nt)
+elif scheme == 'SL3':
+    phiNumerical = sch.SL3(phi, u, dt, dx, nt)
+elif scheme == 'SL3QM':
+    phiNumerical = sch.SL3(phi, u, dt, dx, nt, monotone=True)
 
 else:
     raise Exception("Option for scheme is not valid, check again. Make sure input is a string.")
@@ -140,6 +152,8 @@ else:
 # Error analysis
 #=========================================================================
 L2, phi_error = ea.L2ErrorNorm(phiNumerical, phiAnalytical)
+# Print final total mass
+ea.compute_mass(phiNumerical, 'Final')
 
 #=========================================================================
 # Plotting

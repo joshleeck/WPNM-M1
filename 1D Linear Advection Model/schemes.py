@@ -5,6 +5,7 @@ Updated: 07/04/2019 - Coded explicit schemes
          03/05/2019 - Added implicit schemes
          04/05/2019 - Added finite volume schemes
          06/08/2019 - Added semi-lagrangian scheme
+         04/09/2019 - Added higher order interpolation for SL schemes and monotone limiter
 
 Extended based on a practical by Dr Hilary Weller
 """
@@ -113,12 +114,12 @@ def BTBS(phi, c, nt):
     M[0, -1] = -c
     M[-1, -1] = 1+c
     M[-1, -2] = -c
-    for i in xrange(1, nx-1):
+    for i in range(1, nx-1):
         M[i, i-1] = -c
         M[i, i] = 1+c
 
     # BTBS for all time steps
-    for it in xrange(int(nt)):
+    for it in range(int(nt)):
         # Equivalent to solving system of linear equations Ax = b for x (ie. [A phi^n+1 = phi^n] for phi^n+1)
         phi=la.solve(M, phi)
 
@@ -140,13 +141,13 @@ def BTCS(phi, c, nt):
     M[-1, -1] = 1
     M[-1, 0] = c/2
     M[-1, -2] = -c/2
-    for i in xrange(1, nx-1):
+    for i in range(1, nx-1):
         M[i, i-1] = -c/2
         M[i, i] = 1
         M[i, i+1] = c/2
 
     # BTCS for all time steps
-    for it in xrange(int(nt)):
+    for it in range(int(nt)):
         # Equivalent to solving system of linear equations Ax = b for x (ie. [A phi^n+1 = phi^n] for phi^n+1)
         phi=la.solve(M, phi)
 
@@ -169,13 +170,13 @@ def CNCS(phi, c, nt):
     M[-1, -1] = 1; M2[-1, -1] = 1
     M[-1, 0] = c/4; M2[-1, 0] = -c/4
     M[-1, -2] = -c/4; M2[-1, -2] = c/4
-    for i in xrange(1, nx-1):
+    for i in range(1, nx-1):
         M[i, i-1] = -c/4; M2[i, i-1] = c/4
         M[i, i] = 1; M2[i, i] = 1
         M[i, i+1] = c/4; M2[i, i+1] = -c/4
 
     # CNCS for all time steps
-    for it in xrange(int(nt)):
+    for it in range(int(nt)):
         # Equivalent to solving system of linear equations Ax = Bb for x (ie. [A phi^n+1 = B phi^n] for phi^n+1)
         phi=la.solve(M, np.matmul(M2,phi))
 
@@ -272,7 +273,7 @@ def TVD(phi, c, nt):
 
     return phi
 
-def SL(phi, u, dt, dx, nt):
+def SL1(phi, u, dt, dx, nt):
     '''
     Performs SL scheme, with linear interpolation
     '''
@@ -291,6 +292,62 @@ def SL(phi, u, dt, dx, nt):
             # Compute new value of phi at index based on a linear combination (interpolation)
             # of values from index bounding departure index
             phiNew[j]=(1-alpha)*phi[int(j-p)%nx] + alpha*phi[int(j-p-1)%nx]
+
+        phi = phiNew.copy()
+
+    return phi
+
+def SL2(phi, u, dt, dx, nt):
+    '''
+    Performs SL scheme, with quadratic interpolation
+    '''
+    nx = len(phi)
+
+    phiNew = np.zeros(len(phi), dtype='float')
+
+    for it in range(nt):
+        for j in range(nx):
+            # Starting from any point, compute corresponding departure index using back trajectory (constant u)
+            dep_index=(j-u*dt/float(dx))%nx
+            # Compute integer nearest grid indexes which bound departure index
+            p=math.floor(u*dt/float(dx))
+            # Compute weightage for bounds of departure index based on how far away bounds are (quadratic interpolation)
+            alpha=(j-p-dep_index)%nx
+            # Compute new value of phi at index based on a quadratic interpolation
+            # of values from index bounding departure index
+            phiNew[j]=alpha/2*(1+alpha)*phi[int(j-p-1)%nx] + (1-alpha**2)*phi[int(j-p)%nx] \
+            - alpha/2*(1-alpha)*phi[int(j-p+1)%nx]
+
+        phi = phiNew.copy()
+
+    return phi
+
+def SL3(phi, u, dt, dx, nt, monotone=False):
+    '''
+    Performs SL scheme, with cubic interpolation
+    '''
+    nx = len(phi)
+
+    phiNew = np.zeros(len(phi), dtype='float')
+
+    for it in range(nt):
+        for j in range(nx):
+            # Starting from any point, compute corresponding departure index using back trajectory (constant u)
+            dep_index=(j-u*dt/float(dx))%nx
+            # Compute nearest integer grid indexes which bound departure index
+            p=math.floor(u*dt/float(dx))
+            # Compute weightage for bounds of departure index based on how far away bounds are (cubic interpolation)
+            alpha=(j-p-dep_index)%nx
+            # Compute new value of phi at index based on a cubic interpolation
+            # of values from index bounding departure index
+            phiNew[j]=-(alpha*(1-alpha**2))/6*phi[int(j-p-2)%nx] + alpha*(1+alpha)*(2-alpha)/2*phi[int(j-p-1)%nx] \
+            + (1-alpha**2)*(2-alpha)/2*phi[int(j-p)%nx] - alpha*(1-alpha)*(2-alpha)/6*phi[int(j-p+1)%nx]
+
+            # Impose local monotonicity for cubic interpolation, as done at ECMWF
+            if monotone==True:
+                phimax=max(phi[int(j-p-2)%nx], phi[int(j-p-1)%nx], phi[int(j-p)%nx], phi[int(j-p+1)%nx])
+                phimin=min(phi[int(j-p-2)%nx], phi[int(j-p-1)%nx], phi[int(j-p)%nx], phi[int(j-p+1)%nx])
+                phiNew[j]=max(phimin, min(phimax, phiNew[j]))
 
         phi = phiNew.copy()
 
