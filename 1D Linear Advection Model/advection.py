@@ -52,7 +52,7 @@ SL3:     Semi-Lagrangian with Cubic Interpolation
 SL3QM:   Semi-Lagrangian with Cubic Interpolation with Quasi-Monotone
 """
 # Pick scheme here
-scheme = 'FTCS'
+scheme = 'CTCS'
 
 # Which initial condition do you want to use?
 # Options
@@ -114,6 +114,8 @@ elif scheme == 'FTBS':
     phiNumerical = sch.FTBS(phi, c, nt)
 elif scheme == 'CTBS':
     phiNumerical = sch.CTBS(phi, c, nt)
+elif scheme == 'FTBS_BCtest':
+    phiNumerical = sch.FTBS_BCtest(phi, c, nt, dt)
 
 # Some standard implicit schemes
 elif scheme == 'BTBS':
