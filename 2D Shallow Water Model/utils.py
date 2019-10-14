@@ -4,11 +4,13 @@ Reference code: https://github.com/gabrielmpp/shallow_water
 
 Author: Joshua Lee (MSS/CCRS)
 Updated: 15/08/2019 - Moved utility functions to utils.py
+         11/10/2019 - Added radiating BC option
 
 Extended based on a practical by Prof Pier Luigi Vidale
 """
 
 from scipy import interpolate
+import math
 
 def divergence(u, v, dx, dy):
     # Take the difference between u or v at index j+1 and j
@@ -29,12 +31,22 @@ def meridional_boundary(v):
     v[[0,-1],:] = 0
     return v
 
+def zonal_radiating(u_np1, u, g, H, dx, dt):
+    # Set radiating eastern and western boundaries based on the gravity wave group speed
+    u_np1[:, -1] = u[:, -1] - dt*math.sqrt(g*H)/dx*(u[:, -1]-u[:, -2])
+    u_np1[:, 0] = u[:, 0] - dt*math.sqrt(g*H)/dx*(u[:, 0]-u[:, 1])
+    return u_np1
+
+def meridional_radiating(v_np1, v, g, H, dy, dt):
+    # Set radiating northern and southern boundaries based on the gravity wave group speed
+    v_np1[-1,:] = v[-1,:] - dt*math.sqrt(g*H)/dy*(v[-1,:]- v[-2,:])
+    v_np1[0, :] = v[0, :] - dt*math.sqrt(g*H)/dy*(v[0, :]- v[1, :])
+    return v_np1
+
 def coriolis(plane, u, v, component):
     '''
     Function to compute the Coriolis term (either f-plane or beta-plane)
-
     Here we use the interp method from the xarray library to compute the v values in the u grid (and vice-versa)
-
     Note that u (v) is interpolated to v (u) grid based on the surrounding 4 u (v) points in the Arakawa C-grid
     '''
     if component == 'zonal':
@@ -66,8 +78,8 @@ def linear_depart(array, u, v, dt):
 
 def cubic_depart(array, u, v, dt):
     '''
-    Method to obtain a fully third order semi-lagrangian scheme
-    following Dale Durran's book
+    Method to obtain a second order semi-lagrangian scheme following Dale Durran's book.
+    In addition, cubic interpolation has been performed instead of linear interpolation.
     '''
     # Finding the midpoint of the back trajectory (we only consider half time-step)
     x_mid = array.x - 0.5*dt*u.interp(x=array.x, y=array.y)

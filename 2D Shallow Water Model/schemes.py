@@ -5,6 +5,9 @@ Reference code: https://github.com/gabrielmpp/shallow_water
 Author: Joshua Lee (MSS/CCRS)
 Updated: 15/08/2019 - Moved numerical schemes to schemes.py
          21/08/2019 - Reduced SL to first order, shorter run time (optional second order SL in separate setup)
+         11/10/2019 - Added computation of KE and PE
+         11/10/2019 - Modified friction term to relaxation/damping term
+         11/10/2019 - Added radiating BC option
 
 Extended based on a practical by Prof Pier Luigi Vidale
 """
@@ -17,11 +20,12 @@ import numpy as np
 
 # Eulerian method (Forward-backward time stepping, centred space)
 def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
-                 kappa, tau_x, tau_y, plane, sigma, w, dt, dx, dy,
+                 kappa_u, kappa_v, kappa_eta, tau_x, tau_y, plane, sigma, w, dt, dx, dy,
                  use_friction, use_wind, use_coriolis, use_source, use_sink,
-                 anim_interval, u_list, v_list, eta_list, func):
+                 anim_interval, u_list, v_list, eta_list, KE_list, PE_list, func, use_BC):
 
     while (time_step < max_time_step):
+
         #============== Odd time steps =============
         if time_step % 2 != 0:
             # ----------------- Computing eta values at next time step -------------------
@@ -36,6 +40,10 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
             if (use_sink is True):
                 eta_np1[:, :] -= dt*w
 
+            # Add friction if enabled.
+            if (use_friction is True):
+                eta_np1[:, :] -= dt*kappa_eta*eta[:, :]
+
             # ----------------------------- Done with eta --------------------------------
 
             # ------------ Computing values for u at next time step --------------
@@ -47,7 +55,8 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
 
             # Add friction if enabled.
             if (use_friction is True):
-                u_np1[:, 1:-1] -= dt*kappa*u[:, 1:-1]
+                #u_np1[:, 1:-1] -= dt*kappa*u[:, 1:-1]
+                u_np1[:, :] -= dt*kappa_u*u[:, :]
 
             # Add wind stress if enabled.
             if (use_wind is True):
@@ -57,7 +66,10 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
             if (use_coriolis is True):
                 u_np1[:, 1:-1] += dt*coriolis(plane, u, v, 'zonal')
 
-            u_np1 = zonal_boundary(u_np1)
+            if use_BC == 'reflecting':
+                u_np1 = zonal_boundary(u_np1)
+            elif use_BC == 'radiating':
+                u_np1 = zonal_radiating(u_np1, u, g, H, dx, dt)
 
             # ------------ Computing values for v at next time step --------------
             height_div = eta_np1[:, :].diff('y')/dy
@@ -67,7 +79,8 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
 
             # Add friction if enabled.
             if (use_friction is True):
-                v_np1[1:-1, :] -= kappa*dt*v[1:-1, :]
+                #v_np1[1:-1, :] -= kappa*dt*v[1:-1, :]
+                v_np1[:, :] -= dt*kappa_v*v[:, :]
 
             # Add wind stress if enabled.
             if (use_wind is True):
@@ -75,9 +88,12 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
 
             # Use coriolis term if enabled.
             if (use_coriolis is True):
-                v_np1[1:-1, :] -= dt*coriolis(plane, u, v, 'meridional')
+                v_np1[1:-1, :] -= dt*coriolis(plane, u_np1, v, 'meridional')
 
-            v_np1 = meridional_boundary(v_np1)
+            if use_BC == 'reflecting':
+                v_np1 = meridional_boundary(v_np1)
+            elif use_BC == 'radiating':
+                v_np1 = meridional_radiating(v_np1, v, g, H, dy, dt)
 
             # -------------------------- Done with u and v -----------------------------
 
@@ -111,6 +127,10 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
             if (use_sink is True):
                 eta_np1[:, :] -= dt*w
 
+            if (use_friction is True):
+                eta_np1[:, :] -= dt*kappa_eta*eta[:, :]
+
+
             # ----------------------------- Done with eta --------------------------------
 
             # ------------ Computing values for v at next time step --------------
@@ -121,7 +141,8 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
 
             # Add friction if enabled.
             if (use_friction is True):
-                v_np1[1:-1, :] -= kappa*dt*v[1:-1, :]
+                #v_np1[1:-1, :] -= kappa*dt*v[1:-1, :]
+                v_np1[:, :] -= dt*kappa_v*v[:, :]
 
             # Add wind stress if enabled.
             if (use_wind is True):
@@ -131,7 +152,11 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
             if (use_coriolis is True):
                 v_np1[1:-1, :] -= dt*coriolis(plane, u, v, 'meridional')
 
-            v_np1 = meridional_boundary(v_np1)
+            if use_BC == 'reflecting':
+                v_np1 = meridional_boundary(v_np1)
+            elif use_BC == 'radiating':
+                v_np1 = meridional_radiating(v_np1, v, g, H, dy, dt)
+
 
             # ------------ Computing values for u at next time step --------------
             height_div = eta_np1[:, :].diff('x')/dx
@@ -141,7 +166,8 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
 
             # Add friction if enabled.
             if (use_friction is True):
-                u_np1[:, 1:-1] -= dt*kappa*u[:, 1:-1]
+                #u_np1[:, 1:-1] -= dt*kappa*u[:, 1:-1]
+                u_np1[:, :] -= dt*kappa_u*u[:, :]
 
             # Add wind stress if enabled.
             if (use_wind is True):
@@ -149,9 +175,13 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
 
             # Use coriolis term if enabled.
             if (use_coriolis is True):
-                u_np1[:, 1:-1] += dt*coriolis(plane, u, v, 'zonal')
+                u_np1[:, 1:-1] += dt*coriolis(plane, u, v_np1, 'zonal')
 
-            u_np1 = zonal_boundary(u_np1)
+            if use_BC == 'reflecting':
+                u_np1 = zonal_boundary(u_np1)
+            elif use_BC == 'radiating':
+                u_np1 = zonal_radiating(u_np1, u, g, H, dx, dt)
+
             # -------------------------- Done with u and v -----------------------------
 
             eta = eta_np1.copy()
@@ -172,19 +202,25 @@ def eulerian(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, r
 
             time_step += 1
 
+        # Store kinetic energy and potential energy at each timestep
+        u_temp = u.interp(x=eta.x)
+        v_temp = v.interp(y=eta.y)
+        KE_list.append(np.sum(dx*dy*0.5*rho_0*H*(u_temp**2 + v_temp**2)))
+        PE_list.append(np.sum(dx*dy*0.5*rho_0*g*(eta**2)))
+
 
 # Semi Lagrangian
 def SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
-                 kappa, tau_x, tau_y, plane, sigma, w, dt, dx, dy,
+                 kappa_u, kappa_v, kappa_eta, tau_x, tau_y, plane, sigma, w, dt, dx, dy,
                  use_friction, use_wind, use_coriolis, use_source, use_sink,
-                 anim_interval, u_list, v_list, eta_list, func):
+                 anim_interval, u_list, v_list, eta_list, KE_list, PE_list, func, use_BC):
 
     while (time_step < max_time_step):
         # ============== Odd time steps =============
         if time_step % 2 != 0:
             # ----------------- Computing eta values at next time step -------------------
             # Without source/sink
-            eta_np1[:, :] = func(eta[:, :], u[:, :], v[:, :], dt) - (H+eta.values)*dt*divergence(u, v, dx, dy)
+            eta_np1[:, :] = func(eta[:, :], u[:, :], v[:, :], dt) - H*dt*divergence(u, v, dx, dy)
 
             # Add source term if enabled.
             if (use_source is True):
@@ -193,6 +229,9 @@ def SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
             # Add sink term if enabled.
             if (use_sink is True):
                 eta_np1[:, :] -= dt*w
+
+            if (use_friction is True):
+                eta_np1[:, :] -= dt*kappa_eta*eta[:, :]
 
             # ----------------------------- Done with eta --------------------------------
 
@@ -205,17 +244,21 @@ def SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
 
             # Add friction if enabled.
             if (use_friction is True):
-                u_np1[:, 1:-1] -= dt*kappa*u[:, 1:-1]
+                #u_np1[:, 1:-1] -= dt*kappa*u[:, 1:-1]
+                u_np1[:, :] -= dt*kappa_u*u[:, :]
 
             # Add wind stress if enabled.
             if (use_wind is True):
-                u_np1[:, 1:-1] += dt*tau_x/(rho_0*(H+eta.interp(x=u.x, y=eta.y, method='linear')[:, 1:-1]))
+                u_np1[:, 1:-1] += dt*tau_x/(rho_0*H)
 
             # Use coriolis term if enabled.
             if (use_coriolis is True):
                 u_np1[:, 1:-1] += dt*coriolis(plane, u, v, 'zonal')
 
-            u_np1 = zonal_boundary(u_np1)
+            if use_BC == 'reflecting':
+                u_np1 = zonal_boundary(u_np1)
+            elif use_BC == 'radiating':
+                u_np1 = zonal_radiating(u_np1, u, g, H, dx, dt)
 
             # ------------ Computing values for v at next time step --------------
             height_div = eta_np1[:, :].diff('y')/dy
@@ -226,17 +269,21 @@ def SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
 
             # Add friction if enabled.
             if (use_friction is True):
-                v_np1[1:-1, :] -= dt*kappa*v[1:-1, :]
+                #v_np1[1:-1, :] -= kappa*dt*v[1:-1, :]
+                v_np1[:, :] -= dt*kappa_v*v[:, :]
 
             # Add wind stress if enabled.
             if (use_wind is True):
-                v_np1[1:-1, :] += dt*tau_y/(rho_0*(H+eta.interp(x=eta.x, y=v.y, method='linear')[1:-1, :]))
+                v_np1[1:-1, :] += dt*tau_y/(rho_0*H)
 
             # Use coriolis term if enabled.
             if (use_coriolis is True):
                 v_np1[1:-1, :] -= dt*coriolis(plane, u_np1, v, 'meridional')
 
-            v_np1 = meridional_boundary(v_np1)
+            if use_BC == 'reflecting':
+                v_np1 = meridional_boundary(v_np1)
+            elif use_BC == 'radiating':
+                v_np1 = meridional_radiating(v_np1, v, g, H, dy, dt)
 
             # -------------------------- Done with u and v -----------------------------
             eta = eta_np1.copy()
@@ -260,7 +307,7 @@ def SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
         elif time_step % 2 == 0:
             # ----------------- Computing eta values at next time step -------------------
             # Without source/sink
-            eta_np1[:, :] = func(eta[:, :], u[:, :], v[:, :], dt) - (H+eta.values)*dt*divergence(u, v, dx, dy)
+            eta_np1[:, :] = func(eta[:, :], u[:, :], v[:, :], dt) - H*dt*divergence(u, v, dx, dy)
 
             # Add source term if enabled.
             if (use_source is True):
@@ -269,6 +316,9 @@ def SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
             # Add sink term if enabled.
             if (use_sink is True):
                 eta_np1[:, :] -= dt*w
+
+            if (use_friction is True):
+                eta_np1[:, :] -= dt*kappa_eta*eta[:, :]
 
             # ----------------------------- Done with eta --------------------------------
 
@@ -281,17 +331,21 @@ def SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
 
             # Add friction if enabled.
             if (use_friction is True):
-                v_np1[1:-1, :] -= dt*kappa*v[1:-1, :]
+                #v_np1[1:-1, :] -= kappa*dt*v[1:-1, :]
+                v_np1[:, :] -= dt*kappa_v*v[:, :]
 
             # Add wind stress if enabled.
             if (use_wind is True):
-                v_np1[1:-1, :] += dt*tau_y/(rho_0*(H+eta.interp(x=eta.x, y=v.y, method='linear')[1:-1, :]))
+                v_np1[1:-1, :] += dt*tau_y/(rho_0*H)
 
             # Use coriolis term if enabled.
             if (use_coriolis is True):
                 v_np1[1:-1, :] -= dt*coriolis(plane, u, v, 'meridional')
 
-            v_np1 = meridional_boundary(v_np1)
+            if use_BC == 'reflecting':
+                v_np1 = meridional_boundary(v_np1)
+            elif use_BC == 'radiating':
+                v_np1 = meridional_radiating(v_np1, v, g, H, dy, dt)
 
             # ------------ Computing values for u at next time step --------------
             height_div = eta_np1[:, :].diff('x')/dx
@@ -302,17 +356,21 @@ def SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
 
             # Add friction if enabled.
             if (use_friction is True):
-                u_np1[:, 1:-1] -= dt*kappa*u[:, 1:-1]
+                #u_np1[:, 1:-1] -= dt*kappa*u[:, 1:-1]
+                u_np1[:, :] -= dt*kappa_u*u[:, :]
 
             # Add wind stress if enabled.
             if (use_wind is True):
-                u_np1[:, 1:-1] += dt*tau_x/(rho_0*(H+eta.interp(x=u.x, y=eta.y, method='linear')[:, 1:-1]))
+                u_np1[:, 1:-1] += dt*tau_x/(rho_0*H)
 
             # Use coriolis term if enabled.
             if (use_coriolis is True):
                 u_np1[:, 1:-1] += dt*coriolis(plane, u, v_np1, 'zonal')
 
-            u_np1 = zonal_boundary(u_np1)
+            if use_BC == 'reflecting':
+                u_np1 = zonal_boundary(u_np1)
+            elif use_BC == 'radiating':
+                u_np1 = zonal_radiating(u_np1, u, g, H, dx, dt)
 
             # -------------------------- Done with u and v -----------------------------
 
@@ -333,3 +391,9 @@ def SL(time_step, max_time_step, eta_np1, u_np1, v_np1, eta, u, v, H, g, rho_0,
                 eta_list.append(eta_int.values)
 
             time_step += 1
+
+        # Store kinetic energy and potential energy at each timestep
+        u_temp = u.interp(x=eta.x)
+        v_temp = v.interp(y=eta.y)
+        KE_list.append(np.sum(dx*dy*0.5*rho_0*H*(u_temp**2 + v_temp**2)))
+        PE_list.append(np.sum(dx*dy*0.5*rho_0*g*(eta**2)))

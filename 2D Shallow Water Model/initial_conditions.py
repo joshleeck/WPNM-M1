@@ -5,6 +5,7 @@ Reference code: https://github.com/jostbr/shallow-water
 Author: Joshua Lee (MSS/CCRS)
 Updated: 15/08/2019 - Moved array allocation and initial conditions to initial_conditions.py
 
+
 Extended based on a practical by Prof Pier Luigi Vidale
 """
 
@@ -34,17 +35,35 @@ def allocate_arrays():
 def ic_eta(eta):
     # Initial condition for eta.
     #eta[:, :] = 0.0
-    eta[:,:] = 0.1*np.exp(-((eta.x-L_x/2)**2/(2*(0.05e+6)**2) + (eta.y-L_y/2)**2/(2*(0.05e+6)**2))) #initial height perturbation
+    eta[:, :] = 0.1*np.exp(-((eta.x-L_x/2)**2/(2*(0.05e+6)**2) + (eta.y-L_y/2)**2/(2*(0.05e+6)**2))) #initial positive height perturbation
+    #eta[:, :] = -0.1*np.exp(-((eta.x-L_x/2)**2/(2*(0.05e+6)**2) + (eta.y-L_y/2)**2/(2*(0.05e+6)**2))) #initial negative height perturbation
     return eta
 
-def allocate_optional_arrays(u, eta, param_string):
+def allocate_optional_arrays(u, v, eta, param_string):
     # Define friction array if friction is enabled.
     if (use_friction is True):
-        kappa = kappa_0
-        #kappa[0, :] = kappa_0
-        param_string += "\nkappa = {:g}".format(kappa_0)
+        n=10 #number of damping gridpoints
+        kappa_u = np.zeros_like(u)
+        kappa_v = np.zeros_like(v)
+        kappa_eta = np.zeros_like(eta)
+        #kappa is constant at domain edge
+        # for i in range(n):
+        #    kappa_u[:, [i,-i-1]] = kappa_0
+        #    kappa_v[[i,-i-1], :] = kappa_0
+        #    kappa_eta[[i,-i-1], :] = kappa_0
+        #    kappa_eta[:, [i,-i-1]] = kappa_0
+
+        #kappa is a function of distance (linear) from domain edge
+        for i in range(n):
+            kappa_u[:, [i,-i-1]] = kappa_0*(1-i/n)
+            kappa_v[[i,-i-1], :] = kappa_0*(1-i/n)
+            kappa_eta[[i,-i-1], :] = kappa_0*(1-i/n)
+            kappa_eta[:, [i,-i-1]] = kappa_0*(1-i/n)
+        param_string += "\nkappa_0 = {:g}".format(kappa_0)
     else:
-        kappa = 0
+        kappa_u = 0
+        kappa_v = 0
+        kappa_eta = 0
 
     # Define wind stress arrays if wind is enabled.
     if (use_wind is True):
@@ -68,7 +87,6 @@ def allocate_optional_arrays(u, eta, param_string):
 
         param_string += "\nf_0 = {:g}".format(f_0)
         param_string += "\nRossby radius: {:.1f} km".format(L_R/1000)
-        param_string += "\nRossby number: {:g}".format(np.sqrt(g*H)/(f_0*L_x))
         param_string += "\n================================================================\n"
     else:
         plane = 0*eta.y
@@ -85,4 +103,4 @@ def allocate_optional_arrays(u, eta, param_string):
     else:
         w = np.zeros((N_y, N_x))*eta
 
-    return kappa, tau_x, tau_y, plane, sigma, w, param_string
+    return kappa_u, kappa_v, kappa_eta, tau_x, tau_y, plane, sigma, w, param_string
