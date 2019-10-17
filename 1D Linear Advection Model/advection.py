@@ -21,9 +21,9 @@ import matplotlib.pyplot as plt
 x_min = 0   #float or integer (starting value of x)
 x_max = 1   #float or integer (ending value of x)
 nx = 100    #integer (number of gridpoints)
-nt = 100   #integer (number of timesteps)
-u = 0.2     #float or integer (wind speed)
-T = 1       #float or integer (end time)
+nt = 10   #integer (number of timesteps)
+u = 1     #float or integer (wind speed)
+T = 0.1       #float or integer (end time)
 K = 0.5e-3    #float or integer (diffusivity constant)
 
 # Which scheme do you want to use?
@@ -52,7 +52,7 @@ SL3:     Semi-Lagrangian with Cubic Interpolation
 SL3QM:   Semi-Lagrangian with Cubic Interpolation with Quasi-Monotone
 """
 # Pick scheme here
-scheme = 'CTCS'
+scheme = 'CTCS_AD'
 
 # Which initial condition do you want to use?
 # Options
@@ -62,7 +62,7 @@ B:       A step function
 """
 
 # Pick initial condition here
-init_cond = 'A'
+init_cond = 'B'
 
 #=========================================================================
 # Derived constants
@@ -114,8 +114,6 @@ elif scheme == 'FTBS':
     phiNumerical = sch.FTBS(phi, c, nt)
 elif scheme == 'CTBS':
     phiNumerical = sch.CTBS(phi, c, nt)
-elif scheme == 'FTBS_BCtest':
-    phiNumerical = sch.FTBS_BCtest(phi, c, nt, dt)
 
 # Some standard implicit schemes
 elif scheme == 'BTBS':
