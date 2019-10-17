@@ -196,7 +196,7 @@ def CTCS_AD(phi, c, d, nt):
     # FTCS for advection and artificial diffusion for first time-step
     for j in range(nx):
         phiNew[j] = phi[j] - 0.5*c*(phi[(j+1)%nx] - phi[(j-1)%nx]) \
-                    + 2*d*(phi[(j+1)%nx] - 2*phi[j%nx] + phi[(j-1)%nx])
+                    + d*(phi[(j+1)%nx] - 2*phi[j%nx] + phi[(j-1)%nx])
 
     phiOld = phi.copy()
     phi = phiNew.copy()
@@ -350,26 +350,6 @@ def SL3(phi, u, dt, dx, nt, monotone=False):
                 phimin=min(phi[int(j-p-2)%nx], phi[int(j-p-1)%nx], phi[int(j-p)%nx], phi[int(j-p+1)%nx])
                 phiNew[j]=max(phimin, min(phimax, phiNew[j]))
 
-        phi = phiNew.copy()
-
-    return phi
-
-def FTBS_BCtest(phi, c, nt, dt):
-    '''
-    Performs FTBS scheme
-    '''
-    nx = len(phi)
-
-    # New time-step array for phiNew
-    phiNew = np.zeros(len(phi), dtype='float')
-
-    scaling=4
-    # FTBS for all time steps
-    for it in range(int(nt)):
-        T=it*dt*scaling
-        phiNew[0] = 0.5*(math.sin(T))**2
-        for j in range(1, nx):
-            phiNew[j] = phi[j] - c*(phi[j] - phi[j-1])
         phi = phiNew.copy()
 
     return phi
