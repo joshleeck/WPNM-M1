@@ -21,9 +21,9 @@ import matplotlib.pyplot as plt
 x_min = 0   #float or integer (starting value of x)
 x_max = 1   #float or integer (ending value of x)
 nx = 100    #integer (number of gridpoints)
-nt = 10   #integer (number of timesteps)
-u = 1     #float or integer (wind speed)
-T = 0.1       #float or integer (end time)
+nt = 100   #integer (number of timesteps)
+u = 0.2     #float or integer (wind speed)
+T = 1       #float or integer (end time)
 K = 0.5e-3    #float or integer (diffusivity constant)
 
 # Which scheme do you want to use?
@@ -52,7 +52,7 @@ SL3:     Semi-Lagrangian with Cubic Interpolation
 SL3QM:   Semi-Lagrangian with Cubic Interpolation with Quasi-Monotone
 """
 # Pick scheme here
-scheme = 'CTCS_AD'
+scheme = 'FTCS'
 
 # Which initial condition do you want to use?
 # Options
@@ -62,7 +62,7 @@ B:       A step function
 """
 
 # Pick initial condition here
-init_cond = 'B'
+init_cond = 'A'
 
 #=========================================================================
 # Derived constants
@@ -74,6 +74,7 @@ dx = (x_max - x_min)/nx
 dt = T/nt
 c = dt*u/dx  # CFL criterion is a necessary but not sufficient for stability of the numerical method
 d = K*dt/dx**2 # Non-dimensional diffusion coefficent used in CTCS_AD
+use_RA_filter = False # Robert Asselin filter used only in CTCS
 print('dt=', dt)
 print('dx=', dx)
 print('c=', c)
@@ -109,7 +110,7 @@ elif init_cond == 'B':
 if scheme == 'FTCS':
     phiNumerical = sch.FTCS(phi, c, nt)
 elif scheme == 'CTCS':
-    phiNumerical = sch.CTCS(phi, c, nt)
+    phiNumerical = sch.CTCS(phi, c, nt, use_RA_filter)
 elif scheme == 'FTBS':
     phiNumerical = sch.FTBS(phi, c, nt)
 elif scheme == 'CTBS':

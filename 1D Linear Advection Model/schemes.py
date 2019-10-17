@@ -31,7 +31,7 @@ def FTCS(phi, c, nt):
 
     return phi
 
-def CTCS(phi, c, nt):
+def CTCS(phi, c, nt, use_RA_filter):
     '''
     Performs FTCS scheme for first time step, CTCS scheme for the all other time steps
     '''
@@ -47,10 +47,17 @@ def CTCS(phi, c, nt):
     phiOld = phi.copy()
     phi = phiNew.copy()
 
+    if use_RA_filter==True:
+        al=0.8
+    else:
+        al=0
+
     # CTCS for all other time-steps
     for it in range(1, int(nt)):
         for j in range(nx):
             phiNew[j] = phiOld[j] - c*(phi[(j+1)%nx] - phi[(j-1)%nx])
+        d = al*(phiOld - 2*phi + phiNew)
+        phi = phi + d
 
         phiOld = phi.copy()
         phi = phiNew.copy()
