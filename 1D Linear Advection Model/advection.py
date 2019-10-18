@@ -6,7 +6,7 @@ Updated: 07/04/2019 - Coded skeleton
          06/08/2019 - Added new schemes
          15/08/2019 - Moved plotting routines into plotting.py
          04/09/2019 - Added higher order interpolation for SL schemes and monotone limiter
-         17/10/2019 - Added Robert Asselin filter for CTCS scheme
+         17/10/2019 - Added Robert-Asselin filter and Robert-Asselin-Williams filter for CTCS scheme
 
 Extended based on a practical by Dr Hilary Weller
 """
@@ -26,6 +26,7 @@ nt = 100   #integer (number of timesteps)
 u = 0.2     #float or integer (wind speed)
 T = 1       #float or integer (end time)
 K = 0.5e-3    #float or integer (diffusivity constant)
+use_RA_filter = False # Robert-Asselin filter used only in CTCS
 
 # Which scheme do you want to use?
 # Explicit scheme options
@@ -75,7 +76,6 @@ dx = (x_max - x_min)/nx
 dt = T/nt
 c = dt*u/dx  # CFL criterion is a necessary but not sufficient for stability of the numerical method
 d = K*dt/dx**2 # Non-dimensional diffusion coefficent used in CTCS_AD
-use_RA_filter = False # Robert Asselin filter used only in CTCS
 print('dt=', dt)
 print('dx=', dx)
 print('c=', c)

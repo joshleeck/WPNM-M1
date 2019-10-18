@@ -6,7 +6,7 @@ Updated: 07/04/2019 - Coded explicit schemes
          04/05/2019 - Added finite volume schemes
          06/08/2019 - Added semi-lagrangian scheme
          04/09/2019 - Added higher order interpolation for SL schemes and monotone limiter
-         17/10/2019 - Added Robert Asselin filter for CTCS scheme
+         17/10/2019 - Added Robert-Asselin filter and Robert-Asselin-Williams filter for CTCS scheme
 
 Extended based on a practical by Dr Hilary Weller
 """
@@ -58,7 +58,11 @@ def CTCS(phi, c, nt, use_RA_filter):
         for j in range(nx):
             phiNew[j] = phiOld[j] - c*(phi[(j+1)%nx] - phi[(j-1)%nx])
         d = al*(phiOld - 2*phi + phiNew)
-        phi = phi + d
+        # Robert-Asselin filter if beta=1; Robert-Asselin-Williams filter if beta < 1
+        beta=1
+        phi = phi + beta*d
+        # To use a stable modified Robert-Asselin-Williams filter, set beta > 0.5 and uncomment the next line
+        #phiNew = phiNew +(1-beta)*d
 
         phiOld = phi.copy()
         phi = phiNew.copy()
@@ -358,6 +362,23 @@ def SL3(phi, u, dt, dx, nt, monotone=False):
                 phimin=min(phi[int(j-p-2)%nx], phi[int(j-p-1)%nx], phi[int(j-p)%nx], phi[int(j-p+1)%nx])
                 phiNew[j]=max(phimin, min(phimax, phiNew[j]))
 
+        phi = phiNew.copy()
+
+    return phi
+
+def FTBS(phi, c, nt):
+    '''
+    Performs FTBS scheme
+    '''
+    nx = len(phi)
+
+    # New time-step array for phiNew
+    phiNew = np.zeros(len(phi), dtype='float')
+
+    # FTBS for all time steps
+    for it in range(int(nt)):
+        for j in range(0, nx):
+            phiNew[j] = phi[j] - c*(phi[j] - phi[(j-1)%nx])
         phi = phiNew.copy()
 
     return phi
