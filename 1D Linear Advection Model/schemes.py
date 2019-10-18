@@ -366,23 +366,6 @@ def SL3(phi, u, dt, dx, nt, monotone=False):
 
     return phi
 
-def FTBS(phi, c, nt):
-    '''
-    Performs FTBS scheme
-    '''
-    nx = len(phi)
-
-    # New time-step array for phiNew
-    phiNew = np.zeros(len(phi), dtype='float')
-
-    # FTBS for all time steps
-    for it in range(int(nt)):
-        for j in range(0, nx):
-            phiNew[j] = phi[j] - c*(phi[j] - phi[(j-1)%nx])
-        phi = phiNew.copy()
-
-    return phi
-
 #=========================================================================
 #utility functions
 #=========================================================================
