@@ -64,7 +64,7 @@ B:       A step function
 """
 
 # Pick initial condition here
-init_cond = 'A'
+init_cond = 'B'
 
 #=========================================================================
 # Derived constants
