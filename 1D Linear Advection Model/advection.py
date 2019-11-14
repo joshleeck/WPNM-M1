@@ -40,7 +40,7 @@ CTBS:    Centred in time, Backward in space
 """
 BTBS:    Backward in time, Backward in space
 BTCS:    Backward in time, Centred in space
-CNCS:    Crank-Nicolson, Centred in space
+CNCS:    Crank-Nicholson, Centred in space
 """
 # Extra scheme options
 """
@@ -64,7 +64,7 @@ B:       A step function
 """
 
 # Pick initial condition here
-init_cond = 'B'
+init_cond = 'A'
 
 #=========================================================================
 # Derived constants
